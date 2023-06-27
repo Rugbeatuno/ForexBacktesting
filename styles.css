@@ -1,0 +1,195 @@
+body {
+    background-color: black;
+    font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+    margin: 0px;
+    overflow: hidden;
+    -ms-user-select: none;
+    user-select: none;
+}
+#chartContainer {
+    background-color: black;
+    max-width: 100vw;
+    max-height: 100vh;
+    display: grid;
+    grid-template-columns: 95vw 5vw;
+    grid-template-rows: 7vh 88vh 5vh;
+}
+#chart {
+    background-color: black;
+    /* width: 100%;
+    height: 100%; */
+    grid-column-start: 0;
+    grid-row-start: 2;
+}
+#timeframeSelector {
+    margin: 10px;
+    display: flex;
+    width: 750px;
+    justify-content: space-between;
+    grid-column-start: 1;
+    grid-row-start: 0;
+    /* background-color: ; */
+}
+
+.timeframeButton {
+    margin: 2px;
+    background-color: #14161F;
+    border-radius: 5px;
+    width: 35px;
+    height: 35px;
+    color: white;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.timeframeButton.selected {
+    background-color: #4f5055;
+    filter: brightness(115%);
+}
+
+#priceRange {
+    background-color: black;
+    width: 100%;
+    height: 85%;
+    position: absolute;
+}
+
+.priceRangeLabel {
+    position: inherit;
+    color: rgb(172, 172, 172);
+    justify-content: center;
+    align-items: center;
+    transform: translateY(-50%);
+}
+#priceRangeContainer {
+    grid-column-start: 2;
+    grid-row-start: 2;
+
+    height: 100%;
+    width: 100%;
+
+}
+
+#dateRangeContainer {
+    grid-column-start: 1;
+    grid-row-start: 3;
+    overflow: hidden;
+    
+}
+
+#dateRange {
+    background-color: black;
+
+    overflow: hidden;
+
+}
+
+.dateRangeLabel {
+    transform: translateX(-50%);
+    position: absolute;
+    color: rgb(172, 172, 172);
+    bottom: 5px;
+
+}
+
+#auto {
+    background-color: black;
+
+    grid-column-start: 2;
+    grid-row-start: 3;
+    font-size: x-large;
+    display: flex;
+    justify-content: center;
+    /* transform: translateY(-35%); */
+}
+
+#hoverPrice {
+    width: 4vw;
+    height: 2vh;
+    background-color: black;
+    color: white;
+    position: absolute;
+    right: 1%;
+    font-size: large;
+}
+
+#hoverDate {
+    background-color: black;
+
+    color: white;
+    position: absolute;
+    bottom: 5vh;
+    transform: translateX(-50%);
+}
+
+
+.tool {
+    width: 35px;
+    height: 35px;
+}
+
+.tool.selected {
+    border: 2px dashed rgb(0, 98, 255);
+}
+
+
+#replayBar {
+    position: absolute;
+    color: white;
+    right: 6%;
+    top: 1%;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 20vw;
+    filter: brightness(70%);
+}
+
+#replay {
+    width: 65px;
+    height: 35px;
+    font-size: x-large;
+    display: flex;
+    align-items: center;
+}
+
+#speed {
+    width: 35px;
+    height: 35px;
+    font-size: x-large;
+    display: flex;
+    align-items: center;
+
+}
+
+#play {
+    width: 30px;
+    height: 30px;
+    background-size: cover;
+}
+
+#random {
+    width: 35px;
+    height: 35px;
+    background-size: cover;
+}
+
+#next {
+    width: 35px;
+    height: 35px;
+    background-size: cover;
+}
+
+#progress {
+    font-size: 5rem;
+    color: white;
+    font-weight: 600;
+    position: absolute;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    top: 50%;
+    left: 50%;
+    transform:translate(-50%, -50%)
+}
