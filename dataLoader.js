@@ -130,6 +130,8 @@ export const load = async (pairName, year, month) => {
   let returnVal = processCsv(text);
   return returnVal;
 };
+
+let weekends = [];
 // 2008.01.01,19:00,1.462100,1.462100,1.462100,1.462100,0
 // Date,Time,Open,High,Low,Close,Volume
 const processCsv = (csvData) => {
@@ -152,8 +154,9 @@ const processCsv = (csvData) => {
 
     let currentTrade = (ochl[4] - firstTrade) / 60;
     if (currentTrade - prevIndex !== 1) {
-      for (let i = 1; i < currentTrade - prevIndex; i++) {
+      for (let j = 1; j < currentTrade - prevIndex; j++) {
         if (currentTrade - prevIndex > 2000) {
+          weekends.push(ochl[4]);
           break;
         }
         let ochlPlaceholder = [
@@ -161,7 +164,7 @@ const processCsv = (csvData) => {
           lastOpen,
           lastOpen,
           lastOpen,
-          lastCandleDrawn + 60 * i,
+          lastCandleDrawn + 60 * j,
         ];
         formattedData.push(ochlPlaceholder);
       }
@@ -174,6 +177,10 @@ const processCsv = (csvData) => {
   }
   formattedData = formattedData.slice(0, formattedData.length - 1);
   return formattedData;
+};
+
+export const getWeekends = () => {
+  return weekends;
 };
 
 const getOpenHighLowClose = (bars) => {
@@ -197,7 +204,7 @@ const getOpenHighLowClose = (bars) => {
     }
   });
 
-  return [open, high, low, close, time];
+  return [close, high, low, open, time];
 };
 
 export const getBarsPerTimeframe = (timeframe) => {

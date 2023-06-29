@@ -1,6 +1,7 @@
 import {
   convertToTimeframe,
   getBarsPerTimeframe,
+  getWeekends,
   load,
   TIMEFRAMES,
   timeToTimestamp,
@@ -36,8 +37,8 @@ let canvasWidth = ctx.canvas.width;
 let maxCandles = 0;
 let candleWidth = 0;
 
-let lines = []; // [[x1,y1,x2,y2]]
-let boxes = []; // [[x1,y1,x2,y2]]
+let lines = []; // [[candleX1,y1,candleX1,y2]]
+let boxes = []; // [[candleX1,y1,candleX2,y2]]
 let rays = [];
 let brush = [];
 let lineStarted = false;
@@ -95,6 +96,11 @@ let candleI = 0;
 
 const maxScrollAhead = 0.75;
 
+let activePair = "EUR/USD";
+let displayPairOptions = false;
+let btn = document.getElementById("dropdownBtn");
+let pairs = document.getElementsByClassName("pair");
+
 // let oneMinData = await load("EUR/USD", 2008, 0);
 
 // let data = convertToTimeframe(oneMinData, timeframe);
@@ -104,11 +110,11 @@ let data = [];
 const loadAll = async () => {
   let progress = document.createElement("div");
   progress.id = "progress";
-  progress.innerHTML = "Loading Data 0%";
+  progress.innerHTML = `${activePair}   0%`;
   document.body.appendChild(progress);
   let count = 0;
   for (const y of years) {
-    let yearData = await load("EUR/USD", y, 0);
+    let yearData = await load(activePair, y, 0);
     let convertedData = convertToTimeframe(yearData, timeframe);
 
     yearData.forEach((e) => {
@@ -119,12 +125,47 @@ const loadAll = async () => {
     });
     // console.log(data.length);
     count += 1;
-    progress.innerHTML = `Loading Data ${((count / years.length) * 100).toFixed(
-      0
-    )}%`;
+    progress.innerHTML = `${activePair}   ${(
+      (count / years.length) *
+      100
+    ).toFixed(0)}%`;
   }
   document.body.removeChild(progress);
+  dateRangeEnd = data.length - 1;
 };
+
+const displayPairs = () => {
+  displayPairOptions = !displayPairOptions;
+  if (displayPairOptions) {
+    Array.from(pairs).forEach((e) => {
+      e.style.visibility = "visible";
+    });
+  } else {
+    Array.from(pairs).forEach((e) => {
+      e.style.visibility = "hidden";
+    });
+  }
+};
+
+const initPairChooser = () => {
+  Array.from(pairs).forEach((e) => {
+    e.addEventListener("click", () => {
+      displayPairs();
+      activePair = e.innerHTML;
+      btn.innerHTML = e.innerHTML;
+      oneMinData = [];
+      data = [];
+      loadAll();
+    });
+    e.style.visibility = "hidden";
+  });
+  btn.innerHTML = activePair;
+  btn.addEventListener("click", () => {
+    displayPairs();
+  });
+};
+
+initPairChooser();
 await loadAll();
 
 autoBtn.style.color = "rgb(67, 143, 249)";
@@ -217,6 +258,25 @@ Array.from(TIMEFRAMES.keys()).forEach((key) => {
     let scaleFactor = dataPrevLength / data.length;
     dateRangeEnd = Math.round(dateRangeEnd / scaleFactor);
     replayDateRange = Math.round(replayDateRange / scaleFactor);
+
+    // scale all drawing tools down by scale factor
+    lines.forEach((line) => {
+      line[0] /= scaleFactor;
+      line[2] /= scaleFactor;
+    });
+    boxes.forEach((box) => {
+      box[0] /= scaleFactor;
+      box[2] /= scaleFactor;
+    });
+    rays.forEach((ray) => {
+      ray[0] /= scaleFactor;
+    });
+
+    brush.forEach((path) => {
+      for (let i = 0; i < path.length; i += 2) {
+        path[i] /= scaleFactor;
+      }
+    });
     plotChart();
 
     Array.from(document.getElementsByClassName("timeframeButton")).forEach(
@@ -458,6 +518,7 @@ const convertYToPrice = (y) => {
 };
 
 const drawCurrentPrice = () => {
+  console.log(data[Math.round(candleI)][0], data[Math.round(candleI)][3]);
   let x = mousePosOverCandle - candleWidth / 2;
   let y = mousePos[1];
   let price = convertYToPrice(y);
@@ -489,7 +550,29 @@ const adjustPriceRangeToAuto = () => {
   displayedCandleLow = 1000000;
 };
 
+const drawWeekendBreaks = () => {
+  // weekend dividers
+  ctx.strokeStyle = "#23395d";
+  ctx.lineWidth = 3;
+  ctx.setLineDash([15, 5]);
+  weekends.forEach((timestamp) => {
+    ctx.beginPath();
+    ctx.moveTo(
+      Math.round(convertTimestampToX(timestamp - 172800) - candleWidth) + 0.5,
+      0.5
+    );
+    ctx.lineTo(
+      Math.round(convertTimestampToX(timestamp - 172800) - candleWidth) + 0.5,
+      canvasHeight + 0.5
+    );
+    ctx.stroke();
+  });
+  ctx.setLineDash([0, 0]);
+  ctx.lineWidth = 1;
+};
+
 // console.log(maxCandles);
+let weekends = getWeekends();
 const plotChart = () => {
   if (auto) {
     adjustPriceRangeToAuto();
@@ -544,7 +627,7 @@ const plotChart = () => {
     i > dateRangeEnd - displayedCandles - weekendGaps;
     i--
   ) {
-    if (i < 0 || i >= data.length) {
+    if (i < 0 || i >= data.length - 1) {
       continue;
     }
     const candle = data[Math.round(i)];
@@ -554,9 +637,6 @@ const plotChart = () => {
     let close = candle[3];
     let candlePrintTime = candle[4];
 
-    let bullish = close >= open;
-    let bearish = close < open;
-
     // if (candlePrintTime <= dateRangeEnd) {
     firstCandleDate = candlePrintTime + 60 * getBarsPerTimeframe(timeframe);
 
@@ -564,6 +644,9 @@ const plotChart = () => {
     let scaledClose = scalePriceToCanvasHeight(close);
     let scaledHigh = scalePriceToCanvasHeight(high);
     let scaledLow = scalePriceToCanvasHeight(low);
+
+    // let bullish = close >= open;
+    let bearish = scaledClose > scaledOpen;
 
     if (scaledOpen === scaledClose) {
       scaledClose += 2;
@@ -658,10 +741,17 @@ const plotChart = () => {
   drawBoxes();
   drawRays();
   drawBrush();
+  // drawWeekendBreaks();
 
   // dateRangeEnd = originalDateRangeEnd;
 
   // console.log((new Date() - s) / 1000);
+};
+
+const convertCandleNumToX = (candleNum) => {
+  let max = dateRangeEnd;
+  let start = max - displayedCandles;
+  return (candleNum - start) * candleWidth + candleWidth / 2;
 };
 
 const drawLines = () => {
@@ -670,8 +760,8 @@ const drawLines = () => {
   ctx.lineWidth = 3;
   lines.forEach((line) => {
     let [x1, y1, x2, y2] = line;
-    x1 = convertTimestampToX(x1);
-    x2 = convertTimestampToX(x2);
+    x1 = convertCandleNumToX(x1);
+    x2 = convertCandleNumToX(x2);
     y1 = scalePriceToCanvasHeight(y1);
     y2 = scalePriceToCanvasHeight(y2);
     ctx.beginPath();
@@ -686,8 +776,8 @@ const drawBoxes = () => {
   ctx.globalAlpha = 0.4;
   boxes.forEach((box) => {
     let [x1, y1, x2, y2] = box;
-    x1 = convertTimestampToX(x1);
-    x2 = convertTimestampToX(x2);
+    x1 = convertCandleNumToX(x1);
+    x2 = convertCandleNumToX(x2);
     y1 = scalePriceToCanvasHeight(y1);
     y2 = scalePriceToCanvasHeight(y2);
     ctx.fillRect(x1, y1, x2 - x1, y2 - y1);
@@ -700,7 +790,7 @@ const drawRays = () => {
   ctx.lineWidth = 3;
   rays.forEach((ray) => {
     let [x1, y1] = ray;
-    x1 = convertTimestampToX(x1);
+    x1 = convertCandleNumToX(x1);
     y1 = scalePriceToCanvasHeight(y1);
     ctx.beginPath();
     ctx.moveTo(x1, y1);
@@ -718,7 +808,7 @@ const drawBrush = () => {
       let x = points[i - 1];
       let y = points[i];
 
-      x = convertTimestampToX(x);
+      x = convertCandleNumToX(x);
       y = scalePriceToCanvasHeight(y);
       if (first) {
         ctx.beginPath();
@@ -784,6 +874,8 @@ const drawMeasuringTool = () => {
 };
 
 const convertTimestampToX = (timestamp) => {
+  let endTimestamp =
+    data[Math.max(0, Math.round(Math.min(dateRangeEnd, data.length - 1)))][4];
   let dateRangeStart =
     data[
       Math.max(
@@ -791,6 +883,16 @@ const convertTimestampToX = (timestamp) => {
         Math.round(Math.min(dateRangeEnd, data.length - 1)) - displayedCandles
       )
     ][4];
+
+  // check if a weekend occurs between current and starting range
+  // weekends.forEach((ts) => {
+  //   if (ts > dateRangeStart && ts < endTimestamp) {
+  //     timestamp -= 172800;
+  //     // console.log("shifted weekend");
+  //   }
+  // });
+  // console.log("-----------");
+
   while (dateRangeStart > 10000000000) {
     dateRangeStart /= 10;
   }
@@ -826,25 +928,25 @@ const downlistener = () => {
   if (!lineStarted) {
     if (activeTool === "line") {
       lines.push([
-        dateOverCandle,
+        candleI,
         convertYToPrice(mousePosOnClick[1]),
-        dateOverCandle,
+        candleI,
         convertYToPrice(mousePosOnClick[1]),
       ]);
       lineStarted = true;
     } else if (activeTool === "box") {
       boxes.push([
-        dateOverCandle,
+        candleI,
         convertYToPrice(mousePosOnClick[1]),
-        dateOverCandle,
+        candleI,
         convertYToPrice(mousePosOnClick[1]),
       ]);
       lineStarted = true;
     } else if (activeTool === "ray") {
-      rays.push([dateOverCandle, convertYToPrice(mousePosOnClick[1])]);
+      rays.push([candleI, convertYToPrice(mousePosOnClick[1])]);
       unselectTool();
     } else if (activeTool === "brush") {
-      brush.push([dateOverCandle, convertYToPrice(mousePosOnClick[1])]);
+      brush.push([candleI, convertYToPrice(mousePosOnClick[1])]);
       lineStarted = true;
     }
   } else if (lineStarted) {
@@ -883,17 +985,17 @@ const mouseMove = (e) => {
   if (lineStarted) {
     if (activeTool === "line") {
       let activeLine = lines[lines.length - 1];
-      activeLine[2] = dateOverCandle;
+      activeLine[2] = candleI;
       activeLine[3] = convertYToPrice(mousePos[1]);
     }
     if (activeTool === "box") {
       let box = boxes[boxes.length - 1];
-      box[2] = dateOverCandle;
+      box[2] = candleI;
       box[3] = convertYToPrice(mousePos[1]);
     }
     if (activeTool === "brush") {
       let b = brush[brush.length - 1];
-      b.push(dateOverCandle);
+      b.push(candleI);
       b.push(convertYToPrice(mousePos[1]));
     }
   }
